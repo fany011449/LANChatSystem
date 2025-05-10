@@ -231,21 +231,18 @@ public class Server {
                 System.out.println("一個客戶端的連接 . . . . .");
 ```
 
-
-
 #### 4.定義一個集合容器來存所有登入進來的客戶端Socket，以便將來群發消息給用戶。
 
 - 這個集合只需要一個記住所有Socket 【註冊表】
-  
-  
+
   使用Map集合，Key是存儲客戶端的管道，Value是用戶的暱稱。
-  
+
   因為Scoket值會是唯一，所以適合當Key
-  
-  ```java
-  // 定義一個集合容器來存所有登入進來的客戶端Socket，以便將來群發消息給用戶。
-      public static final Map<Socket, Socket> onLineSockets = new HashMap<>();
-  ```
+
+```java
+// 定義一個集合容器來存所有登入進來的客戶端Socket，以便將來群發消息給用戶。
+    public static final Map<Socket, Socket> onLineSockets = new HashMap<>();
+```
 
 #### 5.Server線程要開始接收登入消息、群聊訊息
 
@@ -288,7 +285,6 @@ private Socket socket;
         }
     }
 }
-
 ```
 
 #### 6.實現服務端消息接收
@@ -363,7 +359,180 @@ private Socket socket;
         }
     }
 }
-
 ```
 
-#### 7. 實現接收客戶端的群聊消息
+### 6. 實現接收客戶端的群聊消息
+
+#### 1. 給登入按鈕綁定一個事件監聽器，觸發後立即與Server's socket請求連結
+
+```java
+// **按鈕事件 - 登入**
+        enterButton.addActionListener(e -> {
+            // **獲取使用者輸入的暱稱，並去除頭尾空格**
+            String nickname = nicknameField.getText().trim();
+            if (!nickname.isEmpty()) { // 確保輸入不為空
+                // 顯示歡迎消息
+                JOptionPane.showMessageDialog(frame, "歡迎 " + nickname + " 進入聊天系統！", "成功", JOptionPane.INFORMATION_MESSAGE);
+                try {
+                    login(nickname);
+                    // **關閉登入介面**
+                    frame.dispose();
+                    // **成功進入聊天室，開啟主聊天視窗**
+                    new ChatRoomFrame(nickname, socket);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            } else {
+                // 如果暱稱為空，顯示錯誤提示
+                JOptionPane.showMessageDialog(frame, "請輸入暱稱！", "錯誤", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+```
+
+```java
+// 登入聊天室
+    private void login(String nickname) throws Exception {
+        // 立即發送登入消息給Server
+        // 1. 創建Socket請求與Server的Socket連結
+        Socket socket = new Socket(Constant.SERVER_IP, Constant.SERVER_PORT);
+
+        // 2. 傳送消息類型編號、暱稱，給Server的Socket
+        DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream());
+        dataOutputStream.writeInt(1); // 傳1：暱稱
+        dataOutputStream.writeUTF(nickname);
+        dataOutputStream.flush(); // 更新
+    }
+```
+
+#### 2. 進入聊天室後，須立即讀取Client's Socket從Server發來的在線人數列表/群聊訊息
+
+- 負責讀取Server發來的在線人數列表/群發消息
+
+- 收消息後，判斷是為在線人數列表更新/群聊訊息
+  
+  ```java
+  package com.dell.ui;
+  
+  import java.io.DataInputStream;
+  import java.net.Socket;
+  import java.util.ArrayList;
+  import java.util.List;
+  
+  
+  public class ClientReaderThread extends Thread {
+  private Socket socket;
+  private ChatRoomFrame chatRoomFrame;
+  private DataInputStream dataInputStream;
+      public ClientReaderThread(Socket socket, ChatRoomFrame chatRoomFrame) {
+          this.chatRoomFrame = chatRoomFrame;
+          this.socket = socket;
+      }
+  
+      @Override
+      public void run() {
+          try {
+              // 接收的訊息會很多類型： 1.登入消息、 2.群聊訊息
+              // 先從Socket中接收Client發過來的消息類型編號
+              dataInputStream = new DataInputStream(socket.getInputStream());
+              while (true) {
+                  // Server發1，代表是登入消息
+                  // Server發2，代表是群聊消息
+                  int type = dataInputStream.readInt(); //消息類型種類
+                  switch (type) {
+                      case 1:
+                          // Server發來的在線人數更新消息
+                          updateClientOnLineUsersListFromServer();
+                          break;
+                      case 2:
+                          // Server發來的群聊消息
+  
+                          break;
+                  }
+              }
+          } catch (Exception e) {
+             e.printStackTrace();
+          }
+      }
+  
+      // 更新在線用戶列表
+      private void updateClientOnLineUsersListFromServer() throws Exception {
+          // 從Server會傳過來
+          // 1. 消息類型種類
+          // 2. 多少個在線人數
+          // 3. 每個人的暱稱
+          int count = dataInputStream.readInt();
+  
+          // 需要有個集合來裝這些暱稱
+          String[] onLineNicknameList = new String[count];
+          for (int i = 0; i < count; i++) {
+              onLineNicknameList[i] = dataInputStream.readUTF();
+          }
+  
+          // 更新窗口介面右側
+          chatRoomFrame.updateOnLineUsers(onLineNicknameList);
+      }
+  }
+   
+  ```
+
+#### 3. 接收群聊消息
+
+- 消息類型：2。聊天室展示消息
+  
+  ```java
+  switch (type) {
+                      case 1:
+                          // Server發來的在線人數更新消息
+                          updateClientOnLineUsersListFromServer();
+                          break;
+                      case 2:
+                          // Server發來的群聊消息
+                          getMsgToWin();
+                          break;
+                  }
+  ```
+  
+  ```java
+  private void getMsgToWin() throws Exception {
+          String msg = dataInputStream.readUTF();
+          chatRoomFrame.setMsgToWin(msg);
+      }
+  ```
+  
+  ```java
+  // 將群聊消息顯示在聊天室中
+      public void setMsgToWin(String msg) {
+          chatArea.append(msg);
+      }
+  ```
+
+#### 4. 發送群聊消息
+
+- 給"發送" 按鈕綁定一個事件監聽器，發送給Server消息類型2，在發送訊息內容 
+
+- ```java
+  // 將送出按鈕綁定事件監聽器
+          sendButton.addActionListener(e -> {
+              String message = inputField.getText().trim();
+              if (!message.isEmpty()) {
+                  // 清空訊息輸入欄
+                  inputField.setText("");
+                  // 發送消息
+                  sendMsgToServer(message);
+              }
+          });
+  ```
+
+- ```java
+  private void sendMsgToServer(String message) {
+          // 1. 從Socket中得到一個特殊數據輸出流
+          try {
+              DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream());
+              dataOutputStream.writeInt(2);
+              dataOutputStream.writeUTF(message);
+              dataOutputStream.flush(); // 刷新數據，以免內存還有殘渣
+          } catch (Exception e) {
+              e.printStackTrace();
+          }
+      }
+  ```
