@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/LAN-chat-system/LAN-chat-system.iml" filepath="$PROJECT_DIR$/LAN-chat-system/LAN-chat-system.iml" />
       <module fileurl="file://$PROJECT_DIR$/LANCommunicationSoftware.iml" filepath="$PROJECT_DIR$/LANCommunicationSoftware.iml" />
+      <module fileurl="file://$PROJECT_DIR$/chat-server/chat-server.iml" filepath="$PROJECT_DIR$/chat-server/chat-server.iml" />
     </modules>
   </component>
 </project>

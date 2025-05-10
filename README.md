@@ -173,16 +173,197 @@
 
 ### 3. 定義一個APP啟動類：創建進入介面並展示。
 
+```java
+public class APP {
+    public static void main(String[] args) {
+        new ChatEntryFrame();
+    }
+}
+```
+
+### 4. 系統架構 -  開發Server端
+
+- 接收Client端的管道連接。
+
+- 接收登入消息、接收暱稱信息、Clinet端發過來的群發消息。
+
+- Server存儲全部在線的Socket管道，以便在線人數、Client轉發消息。
+
+- 如果Server收到登入消息，接收暱稱。就需要更新所有Client端在線人數列表。
+
+- 如果Server收到群聊消息，接收這個人的信息，再轉發給所有Client展示這個消息。
+
+### 5. 開發服務端
+
+#### 1.創建一個Server的Module：chat-server
+
+#### 2.創建一個Server啟動類，啟動Server等待Client的連接
+
+```java
+public class Server {
+    public static void main(String[] args) {
+        System.out.println("啟動服務端系統 . . . .");
+
+        try {
+            // 1. 註冊端口
+            ServerSocket serverSocket = new ServerSocket(Constant.PORT);
+            // 2. 主線程負責接受客戶端的連接請求
+            while (true) {
+                // 3. 調用accept方法，獲取到客戶端的Socket對象
+                System.out.println("等待客戶端的連接 . . . . .");
+                Socket socket = serverSocket.accept();
+                System.out.println("一個客戶端的連接 . . . . .");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+#### 3. 把socket交給一個獨立線程處理，以便支持多個客戶端同時進入系統通訊。
+
+```java
+   // 3. 調用accept方法，獲取到客戶端的Socket對象
+                System.out.println("等待客戶端的連接 . . . . .");
+                Socket socket = serverSocket.accept();
+                new ServerReaderThread(socket).start();
+                System.out.println("一個客戶端的連接 . . . . .");
+```
 
 
 
+#### 4.定義一個集合容器來存所有登入進來的客戶端Socket，以便將來群發消息給用戶。
+
+- 這個集合只需要一個記住所有Socket 【註冊表】
+  
+  
+  使用Map集合，Key是存儲客戶端的管道，Value是用戶的暱稱。
+  
+  因為Scoket值會是唯一，所以適合當Key
+  
+  ```java
+  // 定義一個集合容器來存所有登入進來的客戶端Socket，以便將來群發消息給用戶。
+      public static final Map<Socket, Socket> onLineSockets = new HashMap<>();
+  ```
+
+#### 5.Server線程要開始接收登入消息、群聊訊息
+
+- 接收的訊息會很多類型： 登入消息、群聊訊息、私聊訊息
+  
+  > 客戶端必須聲明協議發送消息
+  > 
+  > 客戶端發1，代表是登入消息
+  > 
+  > 客戶端發2，代表是群聊消息
+
+```java
+public class ServerReaderThread extends Thread {
+private Socket socket;
+    public ServerReaderThread(Socket socket) {
+        this.socket = socket;
+    }
+
+    @Override
+    public void run() {
+        try {
+            // 接收的訊息會很多類型： 登入消息、群聊訊息
+            // 先從Socket中接收Client發過來的消息類型編號
+            DataInputStream dataInputStream = new DataInputStream(socket.getInputStream());
+            int type = dataInputStream.readInt();
+            // 客戶端發1，代表是登入消息
+            // 客戶端發2，代表是群聊消息
+            switch (type) {
+                case 1:
+                    // 登入消息，需要接收暱稱，在更新所有在線人數列表
+                    break;
+                case 2:
+                    // 群聊消息，需要接收群聊消息內容，在把群聊消息發給所有在線人數
+                    break;
+                default:
+            }
+
+        } catch (Exception e) {
+            System.out.println(socket.getInetAddress().getHostAddress() +"用戶下線了");
+        }
+    }
+}
+
+```
+
+#### 6.實現服務端消息接收
+
+```java
+package com.dell;
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.net.Socket;
+import java.util.Collection;
 
 
+public class ServerReaderThread extends Thread {
+private Socket socket;
+    public ServerReaderThread(Socket socket) {
+        this.socket = socket;
+    }
 
+    @Override
+    public void run() {
+        try {
+            // 接收的訊息會很多類型： 登入消息、群聊訊息
+            // 先從Socket中接收Client發過來的消息類型編號
+            DataInputStream dataInputStream = new DataInputStream(socket.getInputStream());
+            int type = dataInputStream.readInt();
+            // 客戶端發1，代表是登入消息
+            // 客戶端發2，代表是群聊消息
+            switch (type) {
+                case 1:
+                    // 登入消息，需要接收暱稱，在更新所有在線人數列表
+                    String nickname = dataInputStream.readUTF();
+                    // 把當前的Socket存進"註冊表onLineSockets"中
+                    Server.onLineSockets.put(socket, nickname);
+                    updateClientOnLineUserList();
+                    break;
+                case 2:
+                    // 群聊消息，需要接收群聊消息內容，在把群聊消息發給所有在線人數
+                    break;
+                default:
+            }
 
+        } catch (Exception e) {
+            System.out.println(socket.getInetAddress().getHostAddress() +"用戶下線了");
+            Server.onLineSockets.remove(socket); // 將下線的Client socket從在線人數列表中
+        }
+    }
 
+    private void updateClientOnLineUserList() {
+        // 更新全部Client的在線人數列表
 
+        // 1. 拿到當前在線所有用戶的暱稱
+        Collection<String> onLineUsers = Server.onLineSockets.values();
 
+        // 2. 把這些暱稱，透過Socket傳回給Client
+        for (Socket socket : Server.onLineSockets.keySet()) {
+            try {
+                // 3. 透過字節輸出流，傳回給Client
+                DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream());
+                // 4. 在傳回更新之前，需要給Client一個信標，表示傳回的類型
+                // 傳1：在線人數列表信息；傳2:群聊訊息
+                dataOutputStream.writeInt(1);
+                for (String onLineUser : onLineUsers) {
+                    dataOutputStream.writeUTF(onLineUser);
+                }
 
+                // 刷新Socket管道
+                dataOutputStream.flush();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
 
+```
 
+#### 7. 實現接收客戶端的群聊消息
