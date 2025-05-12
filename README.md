@@ -1,12 +1,12 @@
 # 實際演示畫面
 
-![](C:\Users\Dell\AppData\Roaming\marktext\images\2025-05-12-22-25-08-image.png)
-
-![](C:\Users\Dell\AppData\Roaming\marktext\images\2025-05-12-22-27-52-image.png)
-
-![](C:\Users\Dell\AppData\Roaming\marktext\images\2025-05-12-23-17-48-image.png)
 
 
+![Screen Shot](D:\develop\Side_Project\images\233045.png)
+
+![Screen Shot](images/233118.png)
+
+![Srceen Shot](D:\develop\Side_Project\images\233149.png)
 
 # 區域網路的通訊軟體 LAN Communication Software
 
@@ -410,8 +410,6 @@ private void showOffLineUserMessage() throws Exception {
     }
 ```
 
-
-
 ### 6. 實現接收客戶端的群聊消息
 
 #### 1. 給登入按鈕綁定一個事件監聽器，觸發後立即與Server's socket請求連結
@@ -469,16 +467,17 @@ private void showOffLineUserMessage() throws Exception {
   import java.util.ArrayList;
   import java.util.List;
   ```
-
+  
   public class ClientReaderThread extends Thread {
   private Socket socket;
   private ChatRoomFrame chatRoomFrame;
   private DataInputStream dataInputStream;
+  
       public ClientReaderThread(Socket socket, ChatRoomFrame chatRoomFrame) {
           this.chatRoomFrame = chatRoomFrame;
           this.socket = socket;
       }
-
+      
       @Override
       public void run() {
           try {
@@ -496,7 +495,7 @@ private void showOffLineUserMessage() throws Exception {
                           break;
                       case 2:
                           // Server發來的群聊消息
-    
+      
                           break;
                   }
               }
@@ -504,7 +503,7 @@ private void showOffLineUserMessage() throws Exception {
              e.printStackTrace();
           }
       }
-    
+      
       // 更新在線用戶列表
       private void updateClientOnLineUsersListFromServer() throws Exception {
           // 從Server會傳過來
@@ -512,17 +511,17 @@ private void showOffLineUserMessage() throws Exception {
           // 2. 多少個在線人數
           // 3. 每個人的暱稱
           int count = dataInputStream.readInt();
-    
+      
           // 需要有個集合來裝這些暱稱
           String[] onLineNicknameList = new String[count];
           for (int i = 0; i < count; i++) {
               onLineNicknameList[i] = dataInputStream.readUTF();
           }
-    
+      
           // 更新窗口介面右側
           chatRoomFrame.updateOnLineUsers(onLineNicknameList);
       }
-
+  
   }
 
 ```
