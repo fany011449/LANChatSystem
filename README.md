@@ -2,11 +2,11 @@
 
 
 
-![Screen Shot](D:\develop\Side_Project\images\233045.png)
+![Screen Shot](images\233045.png)
 
 ![Screen Shot](images/233118.png)
 
-![Srceen Shot](D:\develop\Side_Project\images\233149.png)
+![Srceen Shot](images\233149.png)
 
 # 區域網路的通訊軟體 LAN Communication Software
 
