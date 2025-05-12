@@ -1,3 +1,13 @@
+# 實際演示畫面
+
+![](C:\Users\Dell\AppData\Roaming\marktext\images\2025-05-12-22-25-08-image.png)
+
+![](C:\Users\Dell\AppData\Roaming\marktext\images\2025-05-12-22-27-52-image.png)
+
+![](C:\Users\Dell\AppData\Roaming\marktext\images\2025-05-12-23-17-48-image.png)
+
+
+
 # 區域網路的通訊軟體 LAN Communication Software
 
 ## 需求
@@ -234,9 +244,9 @@ public class Server {
 #### 4.定義一個集合容器來存所有登入進來的客戶端Socket，以便將來群發消息給用戶。
 
 - 這個集合只需要一個記住所有Socket 【註冊表】
-
+  
   使用Map集合，Key是存儲客戶端的管道，Value是用戶的暱稱。
-
+  
   因為Scoket值會是唯一，所以適合當Key
 
 ```java
@@ -361,6 +371,47 @@ private Socket socket;
 }
 ```
 
+#### 7. 實現用戶下線的系統通知
+
+```java
+ System.out.println(socket.getInetAddress().getHostAddress() +"用戶下線了");
+            String offLineName = Server.onLineSockets.remove(socket);// 將下線的Client socket從在線人數列表中
+            showUserOffLine(offLineName);
+            updateClientOnLineUserList(); // 更新在線人數列表
+```
+
+```java
+private void showUserOffLine(String offLineName) {
+        // 🔥 通知所有仍在線的客戶端該用戶下線
+        for (Socket activeSocket : Server.onLineSockets.keySet()) {
+            try {
+                DataOutputStream dataOutputStream = new DataOutputStream(activeSocket.getOutputStream());
+                dataOutputStream.writeInt(3); // 代表下線通知
+                dataOutputStream.writeUTF(offLineName + " 已離線");
+                dataOutputStream.flush();
+            } catch (Exception e) {
+                System.out.println("發送離線通知時發生錯誤：" + e.getMessage());
+            }
+        }
+    }
+```
+
+```java
+case 3:
+                        // Server發來的群聊消息
+                        showOffLineUserMessage();
+                        break;
+```
+
+```java
+private void showOffLineUserMessage() throws Exception {
+        String offLineMsg = dataInputStream.readUTF();
+        chatRoomFrame.setMsgToWin(offLineMsg);
+    }
+```
+
+
+
 ### 6. 實現接收客戶端的群聊消息
 
 #### 1. 給登入按鈕綁定一個事件監聽器，觸發後立即與Server's socket請求連結
@@ -417,8 +468,8 @@ private Socket socket;
   import java.net.Socket;
   import java.util.ArrayList;
   import java.util.List;
-  
-  
+  ```
+
   public class ClientReaderThread extends Thread {
   private Socket socket;
   private ChatRoomFrame chatRoomFrame;
@@ -427,7 +478,7 @@ private Socket socket;
           this.chatRoomFrame = chatRoomFrame;
           this.socket = socket;
       }
-  
+
       @Override
       public void run() {
           try {
@@ -445,7 +496,7 @@ private Socket socket;
                           break;
                       case 2:
                           // Server發來的群聊消息
-  
+    
                           break;
                   }
               }
@@ -453,7 +504,7 @@ private Socket socket;
              e.printStackTrace();
           }
       }
-  
+    
       // 更新在線用戶列表
       private void updateClientOnLineUsersListFromServer() throws Exception {
           // 從Server會傳過來
@@ -461,50 +512,50 @@ private Socket socket;
           // 2. 多少個在線人數
           // 3. 每個人的暱稱
           int count = dataInputStream.readInt();
-  
+    
           // 需要有個集合來裝這些暱稱
           String[] onLineNicknameList = new String[count];
           for (int i = 0; i < count; i++) {
               onLineNicknameList[i] = dataInputStream.readUTF();
           }
-  
+    
           // 更新窗口介面右側
           chatRoomFrame.updateOnLineUsers(onLineNicknameList);
       }
-  }
-   
-  ```
 
+  }
+
+```
 #### 3. 接收群聊消息
 
 - 消息類型：2。聊天室展示消息
-  
-  ```java
-  switch (type) {
-                      case 1:
-                          // Server發來的在線人數更新消息
-                          updateClientOnLineUsersListFromServer();
-                          break;
-                      case 2:
-                          // Server發來的群聊消息
-                          getMsgToWin();
-                          break;
-                  }
-  ```
-  
-  ```java
-  private void getMsgToWin() throws Exception {
-          String msg = dataInputStream.readUTF();
-          chatRoomFrame.setMsgToWin(msg);
-      }
-  ```
-  
-  ```java
-  // 將群聊消息顯示在聊天室中
-      public void setMsgToWin(String msg) {
-          chatArea.append(msg);
-      }
-  ```
+
+```java
+switch (type) {
+                    case 1:
+                        // Server發來的在線人數更新消息
+                        updateClientOnLineUsersListFromServer();
+                        break;
+                    case 2:
+                        // Server發來的群聊消息
+                        getMsgToWin();
+                        break;
+                }
+```
+
+```java
+private void getMsgToWin() throws Exception {
+        String msg = dataInputStream.readUTF();
+        chatRoomFrame.setMsgToWin(msg);
+    }
+```
+
+```java
+// 將群聊消息顯示在聊天室中
+    public void setMsgToWin(String msg) {
+        chatArea.append(msg);
+    }
+```
 
 #### 4. 發送群聊消息
 

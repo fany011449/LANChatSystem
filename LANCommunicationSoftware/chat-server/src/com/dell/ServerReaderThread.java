@@ -2,6 +2,7 @@ package com.dell;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.Socket;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -24,6 +25,7 @@ private Socket socket;
                 int type = dataInputStream.readInt();
                 // 客戶端發1，代表是登入消息
                 // 客戶端發2，代表是群聊消息
+                // 客戶端發3，代表是顯示用戶下線
                 switch (type) {
                     case 1:
                         // 登入消息，需要接收暱稱，在更新所有在線人數列表
@@ -41,8 +43,23 @@ private Socket socket;
             }
         } catch (Exception e) {
             System.out.println(socket.getInetAddress().getHostAddress() +"用戶下線了");
-            Server.onLineSockets.remove(socket); // 將下線的Client socket從在線人數列表中
+            String offLineName = Server.onLineSockets.remove(socket);// 將下線的Client socket從在線人數列表中
+            showUserOffLine(offLineName);
             updateClientOnLineUserList(); // 更新在線人數列表
+        }
+    }
+
+    private void showUserOffLine(String offLineName) {
+        // 🔥 通知所有仍在線的客戶端該用戶下線
+        for (Socket activeSocket : Server.onLineSockets.keySet()) {
+            try {
+                DataOutputStream dataOutputStream = new DataOutputStream(activeSocket.getOutputStream());
+                dataOutputStream.writeInt(3); // 代表下線通知
+                dataOutputStream.writeUTF(offLineName + " 已離線");
+                dataOutputStream.flush();
+            } catch (Exception e) {
+                System.out.println("發送離線通知時發生錯誤：" + e.getMessage());
+            }
         }
     }
 

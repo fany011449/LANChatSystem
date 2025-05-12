@@ -35,11 +35,20 @@ private DataInputStream dataInputStream;
                         // Server發來的群聊消息
                         getMsgToWin();
                         break;
+                    case 3:
+                        // Server發來的群聊消息
+                        showOffLineUserMessage();
+                        break;
                 }
             }
         } catch (Exception e) {
            e.printStackTrace();
         }
+    }
+
+    private void showOffLineUserMessage() throws Exception {
+        String offLineMsg = dataInputStream.readUTF();
+        chatRoomFrame.setMsgToWin(offLineMsg);
     }
 
     private void getMsgToWin() throws Exception {
